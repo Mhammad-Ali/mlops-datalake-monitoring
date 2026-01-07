@@ -8,8 +8,9 @@ metrics = {
 }
 
 def increment(metric_name, value=1):
-    if metric_name in metrics:
-        metrics[metric_name] += value
+    if metric_name not in metrics:
+        metrics[metric_name] = 0
+    metrics[metric_name] += value
 
 def get_metrics():
     return metrics
