@@ -1,22 +1,33 @@
+# ingestion/schema_tracker.py
+
 import json
 import os
+from monitoring.metrics import increment
 
-SCHEMA_FILE = "ingestion/last_schema.json"
+SCHEMA_FILE = "schema.json"
 
-def load_last_schema():
-    if os.path.exists(SCHEMA_FILE):
-        with open(SCHEMA_FILE, "r") as f:
-            return set(json.load(f))
-    return set()
+def track_schema(new_record: dict):
+    new_schema = set(new_record.keys())
 
-def save_schema(schema_features):
-    with open(SCHEMA_FILE, "w") as f:
-        json.dump(list(schema_features), f)
+    if not os.path.exists(SCHEMA_FILE):
+        with open(SCHEMA_FILE, "w") as f:
+            json.dump(list(new_schema), f)
+        return
 
-def compare_schema(new_schema_features):
-    old_schema = load_last_schema()
+    with open(SCHEMA_FILE, "r") as f:
+        old_schema = set(json.load(f))
 
-    added = new_schema_features - old_schema
+    added = new_schema - old_schema
     removed = old_schema - new_schema
 
-    return added, removed
+    if added:
+        increment("feature_added", len(added))
+        print("➕ Features added:", added)
+
+    if removed:
+        increment("feature_removed", len(removed))
+        print("➖ Features removed:", removed)
+
+    if added or removed:
+        with open(SCHEMA_FILE, "w") as f:
+            json.dump(list(new_schema), f)
